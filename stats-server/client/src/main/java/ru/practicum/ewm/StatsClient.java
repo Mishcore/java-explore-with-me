@@ -1,35 +1,40 @@
 package ru.practicum.ewm;
 
-import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
-public class Client {
-    private final RestTemplate rt;
-    public static final String BASE_URI = "http://localhost:9090";
+public class StatsClient {
+
+    private final RestTemplate restTemplate;
+    private final String baseUri = "http://stats-server:9090";
+
+    @Autowired
+    public StatsClient() {
+        this.restTemplate = new RestTemplate();
+    }
 
     public ResponseEntity<EndpointHitDto> saveHit(EndpointHitDto hit) {
         log.info("Отправлен запрос на сохранение информации о запросе к эндпоинту {}", hit);
-        String uri = BASE_URI + "/hit";
-        return rt.postForEntity(uri, hit, EndpointHitDto.class);
+        String uri = baseUri + "/hit";
+        return restTemplate.postForEntity(uri, hit, EndpointHitDto.class);
     }
 
     public ResponseEntity<List<ViewStats>> getStats(String start, String end, String[] uris, Boolean unique) {
         log.info("Отправлен запрос на получение статистики по посещениям");
 
-        String uri = BASE_URI + "/stats";
+        String uri = baseUri + "/stats";
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(uri)
                 .queryParam("start", "{start}")
@@ -46,6 +51,6 @@ public class Client {
         String expandedUriString = builder.buildAndExpand(uriVariables).toUriString();
         ParameterizedTypeReference<List<ViewStats>> responseType = new ParameterizedTypeReference<>() {};
 
-        return rt.exchange(expandedUriString, HttpMethod.GET, null, responseType);
+        return restTemplate.exchange(expandedUriString, HttpMethod.GET, null, responseType);
     }
 }
