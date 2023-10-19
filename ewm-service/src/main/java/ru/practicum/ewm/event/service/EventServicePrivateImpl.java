@@ -16,24 +16,28 @@ import ru.practicum.ewm.event.location.dao.LocationRepository;
 import ru.practicum.ewm.event.location.model.Location;
 import ru.practicum.ewm.event.mapper.EventMapper;
 import ru.practicum.ewm.event.model.Event;
+import ru.practicum.ewm.exception.EntityNotFoundException;
 import ru.practicum.ewm.exception.InvalidOperationException;
 import ru.practicum.ewm.exception.UnauthorizedAccessException;
+import ru.practicum.ewm.rating.dao.VoteId;
+import ru.practicum.ewm.rating.dao.VoteRepository;
+import ru.practicum.ewm.rating.model.Vote;
+import ru.practicum.ewm.request.dao.RequestRepository;
 import ru.practicum.ewm.request.dto.ParticipationRequestDto;
 import ru.practicum.ewm.request.enums.Status;
 import ru.practicum.ewm.request.mapper.ParticipationRequestMapper;
 import ru.practicum.ewm.request.model.ParticipationRequest;
-import ru.practicum.ewm.request.repository.RequestRepository;
 import ru.practicum.ewm.user.dao.UserRepository;
 import ru.practicum.ewm.user.model.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static ru.practicum.ewm.Constants.TIME_FORMATTER;
 import static ru.practicum.ewm.utility.EntityFinder.*;
-import static ru.practicum.ewm.utility.EventViewsManager.getEventViews;
 
 @Service
 @Transactional
@@ -47,6 +51,7 @@ public class EventServicePrivateImpl implements EventServicePrivate {
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
     private final RequestRepository requestRepository;
+    private final VoteRepository voteRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -55,7 +60,7 @@ public class EventServicePrivateImpl implements EventServicePrivate {
         List<Event> eventList = eventRepository.findAllByInitiatorId(userId, PageRequest.of(from / size, size));
         log.info("Получен список событий пользователя ID: {}", userId);
         return eventList.stream()
-                .map(event -> EventMapper.toEventShortDto(event, getEventViews(statsClient, event)))
+                .map((event) -> EventMapper.toEventShortDto(event, statsClient))
                 .collect(Collectors.toList());
     }
 
@@ -66,7 +71,7 @@ public class EventServicePrivateImpl implements EventServicePrivate {
         Location location = findLocationOrSaveNew(locationRepository, newEventDto.getLocation());
         Event event = eventRepository.save(EventMapper.toEvent(newEventDto, initiator, category, location));
         log.info("Добавлено новое событие ID: {}", event.getId());
-        return EventMapper.toEventFullDto(event, 0L);
+        return EventMapper.toNewEventFullDto(event);
     }
 
     @Transactional(readOnly = true)
@@ -78,7 +83,7 @@ public class EventServicePrivateImpl implements EventServicePrivate {
             throw new UnauthorizedAccessException("Пользователь не является инициатором события");
         }
         log.info("Получено событие ID: {} пользователя ID: {}", eventId, userId);
-        return EventMapper.toEventFullDto(event, getEventViews(statsClient, event));
+        return EventMapper.toEventFullDto(event, statsClient, voteRepository);
     }
 
     @Override
@@ -89,7 +94,7 @@ public class EventServicePrivateImpl implements EventServicePrivate {
         patchEvent(event, updateEventUserRequest);
         eventRepository.saveAndFlush(event);
         log.info("Внесены изменения в событие ID: {} пользователя ID: {}", eventId, userId);
-        return EventMapper.toEventFullDto(event, getEventViews(statsClient, event));
+        return EventMapper.toEventFullDto(event, statsClient, voteRepository);
     }
 
     @Transactional(readOnly = true)
@@ -124,6 +129,30 @@ public class EventServicePrivateImpl implements EventServicePrivate {
         fillRequestLists(requestList, confirmedRequests, rejectedRequests);
 
         return new EventRequestStatusUpdateResult(confirmedRequests, rejectedRequests);
+    }
+
+    @Override
+    public EventFullDto addVote(Long userId, Integer eventId, Boolean liked) {
+        User user = findUserOrThrowException(userRepository, userId);
+        Event event = findEventOrThrowException(eventRepository, eventId);
+        permitVoting(user, event, liked);
+        voteRepository.save(new Vote(eventId, userId, liked));
+        Event likedEvent = findEventOrThrowException(eventRepository, eventId);
+        return EventMapper.toEventFullDto(likedEvent, statsClient, voteRepository);
+    }
+
+    @Override
+    public EventFullDto removeVote(Long userId, Integer eventId) {
+        findUserOrThrowException(userRepository, userId);
+        Event event = findEventOrThrowException(eventRepository, eventId);
+        Vote vote;
+        try {
+            vote = findVoteOrThrowException(voteRepository, eventId, userId);
+        } catch (EntityNotFoundException e) {
+            throw new InvalidOperationException("Удалить можно только ранее поставленный лайк или дизлайк");
+        }
+        voteRepository.delete(vote);
+        return EventMapper.toEventFullDto(event, statsClient, voteRepository);
     }
 
     private Event patchEvent(Event event, UpdateEventUserRequest updateEventUserRequest) {
@@ -193,6 +222,24 @@ public class EventServicePrivateImpl implements EventServicePrivate {
         for (ParticipationRequest request : requestList) {
             if (!request.getStatus().equals(Status.PENDING)) {
                 throw new InvalidOperationException("Статус можно изменить только у заявок в состоянии ожидания");
+            }
+        }
+    }
+
+    private void permitVoting(User user, Event event, Boolean liked) {
+        ParticipationRequest request;
+        try {
+            request = findRequestOrThrowException(requestRepository, user.getId(), event.getId());
+        } catch (EntityNotFoundException e) {
+            throw new InvalidOperationException("Оценивать события могут только пользователи, посетившие их");
+        }
+        if (!request.getStatus().equals(Status.CONFIRMED)) {
+            throw new InvalidOperationException("Оценивать события могут только пользователи, посетившие их");
+        }
+        Optional<Vote> voteOpt = voteRepository.findById(new VoteId(event.getId(), user.getId()));
+        if (voteOpt.isPresent()) {
+            if (voteOpt.get().getLiked().equals(liked)) {
+                throw new InvalidOperationException("Нельзя поставить лайк или дизлайк повторно");
             }
         }
     }

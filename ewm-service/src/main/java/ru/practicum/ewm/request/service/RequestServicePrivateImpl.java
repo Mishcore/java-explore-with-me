@@ -8,19 +8,21 @@ import ru.practicum.ewm.event.dao.EventRepository;
 import ru.practicum.ewm.event.enums.State;
 import ru.practicum.ewm.event.model.Event;
 import ru.practicum.ewm.exception.InvalidOperationException;
+import ru.practicum.ewm.request.dao.RequestRepository;
 import ru.practicum.ewm.request.dto.ParticipationRequestDto;
 import ru.practicum.ewm.request.enums.Status;
 import ru.practicum.ewm.request.mapper.ParticipationRequestMapper;
 import ru.practicum.ewm.request.model.ParticipationRequest;
-import ru.practicum.ewm.request.repository.RequestRepository;
 import ru.practicum.ewm.user.dao.UserRepository;
 import ru.practicum.ewm.user.model.User;
+import ru.practicum.ewm.utility.EntityFinder;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.practicum.ewm.utility.EntityFinder.*;
+import static ru.practicum.ewm.utility.EntityFinder.findEventOrThrowException;
+import static ru.practicum.ewm.utility.EntityFinder.findUserOrThrowException;
 
 @Service
 @Transactional
@@ -65,7 +67,7 @@ public class RequestServicePrivateImpl implements RequestServicePrivate {
     @Override
     public ParticipationRequestDto cancelRequest(Long userId, Integer requestId) {
         findUserOrThrowException(userRepository, userId);
-        ParticipationRequest request = findRequestOtThrowException(requestRepository, requestId);
+        ParticipationRequest request = EntityFinder.findRequestOrThrowException(requestRepository, requestId);
 
         if (!request.getRequester().getId().equals(userId)) {
             throw new InvalidOperationException("Отменить заявку может только пользователь, подавший заявку");

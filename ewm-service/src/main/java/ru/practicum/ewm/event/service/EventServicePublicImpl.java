@@ -16,6 +16,7 @@ import ru.practicum.ewm.event.mapper.EventMapper;
 import ru.practicum.ewm.event.model.Event;
 import ru.practicum.ewm.event.model.QEvent;
 import ru.practicum.ewm.exception.EntityNotFoundException;
+import ru.practicum.ewm.rating.dao.VoteRepository;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
@@ -25,8 +26,7 @@ import java.util.stream.Collectors;
 
 import static ru.practicum.ewm.Constants.TIME_FORMATTER;
 import static ru.practicum.ewm.utility.EntityFinder.findEventOrThrowException;
-import static ru.practicum.ewm.utility.EventViewsManager.getEventViews;
-import static ru.practicum.ewm.utility.EventViewsManager.saveEndpointHit;
+import static ru.practicum.ewm.utility.EventManager.saveEndpointHit;
 
 @Service
 @Transactional(readOnly = true)
@@ -36,6 +36,7 @@ public class EventServicePublicImpl implements EventServicePublic {
 
     private final StatsClient statsClient;
     private final EventRepository eventRepository;
+    private final VoteRepository voteRepository;
 
     @Override
     public List<EventShortDto> getEvents(String text, Integer[] categories, Boolean paid,
@@ -51,7 +52,7 @@ public class EventServicePublicImpl implements EventServicePublic {
             eventList.sort(Comparator.comparing(Event::getEventDate));
         }
         List<EventShortDto> eventDtoList = eventList.stream()
-                .map(event -> EventMapper.toEventShortDto(event, getEventViews(statsClient, event)))
+                .map(event -> EventMapper.toEventShortDto(event, statsClient))
                 .collect(Collectors.toList());
         if (sort.equals(Sort.VIEWS) && eventList.size() > 1) {
             eventDtoList.sort(Comparator.comparingLong(EventShortDto::getViews));
@@ -71,7 +72,7 @@ public class EventServicePublicImpl implements EventServicePublic {
         log.info("Получено событие ID: {}", eventId);
         saveEndpointHit(statsClient, request);
         log.info("Сервис статистики сохранил обращение к событию ID: {}", eventId);
-        return EventMapper.toEventFullDto(event, getEventViews(statsClient, event));
+        return EventMapper.toEventFullDto(event, statsClient, voteRepository);
     }
 
     private BooleanExpression buildCondition(QEvent event, String text, Integer[] categories, Boolean paid,

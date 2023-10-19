@@ -1,4 +1,4 @@
-package ru.practicum.ewm.request.repository;
+package ru.practicum.ewm.request.dao;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

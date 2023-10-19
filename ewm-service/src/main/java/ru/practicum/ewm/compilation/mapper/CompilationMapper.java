@@ -12,8 +12,6 @@ import ru.practicum.ewm.event.model.Event;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static ru.practicum.ewm.utility.EventViewsManager.getEventViews;
-
 @UtilityClass
 public class CompilationMapper {
 
@@ -26,7 +24,7 @@ public class CompilationMapper {
 
     public static CompilationDto toCompilationDto(Compilation compilation, StatsClient statsClient) {
         List<EventShortDto> eventDtos = compilation.getEvents().stream()
-                .map(event -> EventMapper.toEventShortDto(event, getEventViews(statsClient, event)))
+                .map(event -> EventMapper.toEventShortDto(event, statsClient))
                 .collect(Collectors.toList());
 
         return new CompilationDto(eventDtos, compilation.getId(), compilation.getTitle(), compilation.getPinned());

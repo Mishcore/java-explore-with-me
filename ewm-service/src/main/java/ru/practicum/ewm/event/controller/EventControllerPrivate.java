@@ -72,4 +72,19 @@ public class EventControllerPrivate {
                 eventId, userId);
         return eventServicePrivate.updateUserParticipationRequests(userId, eventId, updateRequest);
     }
+
+    @PostMapping("/{eventId}/like")
+    public EventFullDto voteEvent(@PathVariable @Positive Long userId,
+                                  @PathVariable @Positive Integer eventId,
+                                  @RequestParam Boolean liked) {
+        log.info("Принят запрос на добавление оценки события ID: {} от пользователя ID: {}", eventId, userId);
+        return eventServicePrivate.addVote(userId, eventId, liked);
+    }
+
+    @DeleteMapping("/{eventId}/like")
+    public EventFullDto removeVote(@PathVariable @Positive Long userId,
+                                  @PathVariable @Positive Integer eventId) {
+        log.info("Принят запрос на удаление оценки события ID: {} от пользователя ID: {}", eventId, userId);
+        return eventServicePrivate.removeVote(userId, eventId);
+    }
 }

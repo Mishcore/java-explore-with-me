@@ -1,4 +1,4 @@
-package ru.practicum.ewm.user.dto;
+package ru.practicum.ewm.rating.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -7,13 +7,11 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserDto {
+public class Rating {
 
-    private Long id;
+    private Long likes;
 
-    private String email;
-
-    private String name;
+    private Long dislikes;
 
     private Float rating;
 }

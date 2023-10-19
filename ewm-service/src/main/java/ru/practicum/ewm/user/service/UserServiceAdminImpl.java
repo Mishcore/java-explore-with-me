@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.ewm.exception.EmailAlreadyExistsException;
+import ru.practicum.ewm.rating.dao.VoteRepository;
 import ru.practicum.ewm.user.dao.UserRepository;
 import ru.practicum.ewm.user.dto.NewUserRequest;
 import ru.practicum.ewm.user.dto.UserDto;
@@ -26,6 +27,7 @@ import static ru.practicum.ewm.utility.EntityFinder.findUserOrThrowException;
 public class UserServiceAdminImpl implements UserServiceAdmin {
 
     private final UserRepository userRepository;
+    private final VoteRepository voteRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -38,7 +40,7 @@ public class UserServiceAdminImpl implements UserServiceAdmin {
         }
         log.info("Получен список всех пользователей");
         return users.stream()
-                .map(UserMapper::toUserDto)
+                .map((user) -> UserMapper.toUserDto(user, voteRepository))
                 .collect(Collectors.toList());
     }
 
@@ -47,7 +49,7 @@ public class UserServiceAdminImpl implements UserServiceAdmin {
         try {
             User user = userRepository.saveAndFlush(UserMapper.toUser(newUserDto));
             log.info("Добавлен новый пользователь ID: {}", user.getId());
-            return UserMapper.toUserDto(user);
+            return UserMapper.toUserDto(user, voteRepository);
         } catch (DataIntegrityViolationException e) {
             throw new EmailAlreadyExistsException("Уже существует пользователь с таким e-mail");
         }
