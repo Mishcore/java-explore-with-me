@@ -10,8 +10,11 @@ import ru.practicum.ewm.event.location.dao.LocationRepository;
 import ru.practicum.ewm.event.location.model.Location;
 import ru.practicum.ewm.event.model.Event;
 import ru.practicum.ewm.exception.EntityNotFoundException;
+import ru.practicum.ewm.rating.dao.VoteId;
+import ru.practicum.ewm.rating.dao.VoteRepository;
+import ru.practicum.ewm.rating.model.Vote;
+import ru.practicum.ewm.request.dao.RequestRepository;
 import ru.practicum.ewm.request.model.ParticipationRequest;
-import ru.practicum.ewm.request.repository.RequestRepository;
 import ru.practicum.ewm.user.dao.UserRepository;
 import ru.practicum.ewm.user.model.User;
 
@@ -38,13 +41,24 @@ public class EntityFinder {
                 .orElse(locationRepository.save(location));
     }
 
-    public static ParticipationRequest findRequestOtThrowException(RequestRepository requestRepository, Integer requestId) {
+    public static ParticipationRequest findRequestOrThrowException(RequestRepository requestRepository, Integer requestId) {
         return requestRepository.findById(requestId)
+                .orElseThrow(() -> new EntityNotFoundException("Заявка на участие не найдена"));
+    }
+
+    public static ParticipationRequest findRequestOrThrowException(RequestRepository requestRepository,
+                                                                   Long userId, Integer eventId) {
+        return requestRepository.findByRequesterIdAndEventId(userId, eventId)
                 .orElseThrow(() -> new EntityNotFoundException("Заявка на участие не найдена"));
     }
 
     public static Compilation findCompilationOrThrowException(CompilationRepository compilationRepository, Integer compId) {
         return compilationRepository.findById(compId)
                 .orElseThrow(() -> new EntityNotFoundException("Подборка событий не найдена"));
+    }
+
+    public static Vote findVoteOrThrowException(VoteRepository voteRepository, Integer eventId, Long userId) {
+        return voteRepository.findById(new VoteId(eventId, userId))
+                .orElseThrow(() -> new EntityNotFoundException("Оценка пользователя не найдена"));
     }
 }

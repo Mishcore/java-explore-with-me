@@ -18,6 +18,7 @@ import ru.practicum.ewm.event.mapper.EventMapper;
 import ru.practicum.ewm.event.model.Event;
 import ru.practicum.ewm.event.model.QEvent;
 import ru.practicum.ewm.exception.InvalidOperationException;
+import ru.practicum.ewm.rating.dao.VoteRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,7 +26,6 @@ import java.util.stream.Collectors;
 
 import static ru.practicum.ewm.Constants.TIME_FORMATTER;
 import static ru.practicum.ewm.utility.EntityFinder.*;
-import static ru.practicum.ewm.utility.EventViewsManager.getEventViews;
 
 @Service
 @Transactional
@@ -37,6 +37,7 @@ public class EventServiceAdminImpl implements EventServiceAdmin {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
+    private final VoteRepository voteRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -50,7 +51,7 @@ public class EventServiceAdminImpl implements EventServiceAdmin {
                 eventRepository.findAll(filteringCondition, PageRequest.of(from / size, size)).getContent();
         log.info("Получен список событий: {}", eventList);
         return eventList.stream()
-                .map(event -> EventMapper.toEventFullDto(event, getEventViews(statsClient, event)))
+                .map((event) -> EventMapper.toEventFullDto(event, statsClient, voteRepository))
                 .collect(Collectors.toList());
     }
 
@@ -61,7 +62,7 @@ public class EventServiceAdminImpl implements EventServiceAdmin {
         patchEvent(event, updateEventAdminRequest);
         eventRepository.saveAndFlush(event);
         log.info("Внесены изменения в событие ID: {} пользователя ID: {}", eventId, event.getInitiator().getId());
-        return EventMapper.toEventFullDto(event, getEventViews(statsClient, event));
+        return EventMapper.toEventFullDto(event, statsClient, voteRepository);
     }
 
     private BooleanExpression buildCondition(QEvent event, Long[] users, State[] states, Integer[] categories,

@@ -19,4 +19,8 @@ public interface EventServicePrivate {
 
     EventRequestStatusUpdateResult updateUserParticipationRequests(Long userId, Integer eventId,
                                                                    EventRequestStatusUpdateRequest updateRequest);
+
+    EventFullDto addVote(Long userId, Integer eventId, Boolean liked);
+
+    EventFullDto removeVote(Long userId, Integer eventId);
 }
